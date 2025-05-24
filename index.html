@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <title>জমির ক্ষেত্রফল হিসাব (রিয়েল টাইম)</title>
+  <style>
+    body {
+      font-family: 'SolaimanLipi', Arial, sans-serif;
+      padding: 30px 40px;
+      max-width: 650px;
+      background: #fafafa;
+      direction: ltr;
+    }
+    .plot {
+      margin-bottom: 20px;
+      padding: 15px 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 1px 1px 6px rgba(0,0,0,0.05);
+    }
+    .inputs-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .inputs-row label {
+      width: 90px;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #444;
+      font-family: 'SolaimanLipi', Arial, sans-serif;
+    }
+    .inputs-row input {
+      width: 100px;
+      margin-right: 14px;
+      padding: 7px 10px;
+      font-size: 1.1rem;
+      border: 1.5px solid #bbb;
+      border-radius: 5px;
+      transition: border-color 0.25s ease;
+    }
+    .inputs-row input:focus {
+      border-color: #1976d2;
+      outline: none;
+      box-shadow: 0 0 6px rgba(25, 118, 210, 0.4);
+    }
+    .plot button {
+      margin-top: 8px;
+      padding: 7px 14px;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    .plot button:hover {
+      background-color: #d32f2f;
+    }
+    #addPlotBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 7px;
+      border: none;
+      background-color: #1976d2;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.6);
+      transition: background-color 0.3s ease;
+      font-family: 'SolaimanLipi', Arial, sans-serif;
+    }
+    #addPlotBtn:hover {
+      background-color: #0f4a8c;
+    }
+    #output {
+      margin-top: 30px;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: #1976d2;
+      font-family: 'SolaimanLipi', Arial, sans-serif;
+    }
+    #calcDetails, #canvasContainer {
+      margin-top: 20px;
+      border: 1.5px solid #ccc;
+      padding: 25px 30px 30px 30px;
+      border-radius: 10px;
+      background: #fff;
+      display: none;
+      white-space: pre-wrap;
+      font-family: monospace, 'SolaimanLipi', Arial, sans-serif;
+      font-size: 0.95rem;
+      color: #333;
+      box-shadow: 1px 2px 10px rgba(0,0,0,0.05);
+      direction: ltr;
+    }
+    button.toggleBtn {
+      margin-top: 20px;
+      margin-right: 15px;
+      cursor: pointer;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 7px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(25, 118, 210, 0.5);
+      transition: background-color 0.3s ease;
+      font-family: 'SolaimanLipi', Arial, sans-serif;
+    }
+    button.toggleBtn:hover {
+      background-color: #0f4a8c;
+    }
+    canvas {
+      background-color: white;
+      display: block;
+      margin: 0 auto;
+      border: 1.5px solid #999;
+      border-radius: 8px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=SolaimanLipi&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<h2>জমির ক্ষেত্রফল হিসাব (রিয়েল টাইম)</h2>
+
+<div id="plots"></div>
+
+<button id="addPlotBtn" onclick="addPlot()">নতুন প্লট যোগ করুন</button>
+
+<div id="output">মোট এলাকা: <span id="demo">0</span> একর</div>
+
+<div>
+  <button id="toggleCalcBtn" class="toggleBtn" onclick="toggleCalculations()">হিসাব দেখান</button>
+  <button id="toggleCanvasBtn" class="toggleBtn" onclick="toggleCanvas()">জমির দৃশ্য দেখান</button>
+</div>
+
+<div id="calcDetails"></div>
+
+<div id="canvasContainer">
+  <canvas id="landCanvas" width="600" height="400"></canvas>
+</div>
+<div>
+  <button class="toggleBtn" onclick="downloadCalculations()">হিসাব ডাউনলোড করুন</button>
+  <button class="toggleBtn" onclick="downloadCanvasImage()">জমির ছবি ডাউনলোড করুন</button>
+  <button class="toggleBtn" onclick="printCanvas()">জমির ছবি প্রিন্ট করুন</button>
+</div>
+<script>
+  const plotsContainer = document.getElementById('plots');
+  const output = document.getElementById('demo');
+  const calcDetails = document.getElementById('calcDetails');
+  const toggleCalcBtn = document.getElementById('toggleCalcBtn');
+  const toggleCanvasBtn = document.getElementById('toggleCanvasBtn');
+  const canvasContainer = document.getElementById('canvasContainer');
+  const canvas = document.getElementById('landCanvas');
+  const ctx = canvas.getContext('2d');
+  let calculationsVisible = false;
+  let canvasVisible = false;
+
+  function saveToLocalStorage() {
+    const plotElements = document.querySelectorAll('.plot');
+    const plotData = Array.from(plotElements).map(plot => {
+      return Array.from(plot.querySelectorAll('input')).map(input => input.value || '');
+    });
+    localStorage.setItem('plotData', JSON.stringify(plotData));
+  }
+
+  function loadFromLocalStorage() {
+    const data = JSON.parse(localStorage.getItem('plotData'));
+    if (data && data.length > 0) {
+      data.forEach(values => {
+        addPlot(values);
+      });
+    } else {
+      addPlot();
+    }
+    calculateTotal();
+  }
+
+  function addPlot(values = ['', '', '', '']) {
+    const plotDiv = document.createElement('div');
+    plotDiv.className = 'plot';
+
+    plotDiv.innerHTML = `
+      <div class="inputs-row">
+        <label>দৈর্ঘ্য:</label>
+        <input type="number" step="any" placeholder="উত্তর" required value="${values[0]}">
+        <input type="number" step="any" placeholder="দক্ষিণ" required value="${values[1]}">
+      </div>
+      <div class="inputs-row">
+        <label>প্রস্থ:</label>
+        <input type="number" step="any" placeholder="পূর্ব" required value="${values[2]}">
+        <input type="number" step="any" placeholder="পশ্চিম" required value="${values[3]}">
+      </div>
+      <button onclick="deletePlot(this)">মুছুন</button>
+    `;
+
+    Array.from(plotDiv.querySelectorAll('input')).forEach(input => {
+      input.addEventListener('input', () => {
+        saveToLocalStorage();
+        calculateTotal();
+      });
+    });
+
+    plotsContainer.appendChild(plotDiv);
+    saveToLocalStorage();
+  }
+
+  function deletePlot(button) {
+    const plotDiv = button.parentElement;
+    plotsContainer.removeChild(plotDiv);
+    saveToLocalStorage();
+    calculateTotal();
+  }
+
+  function calculateTotal() {
+    const plotElements = document.querySelectorAll('.plot');
+    let total = 0;
+    let allValid = true;
+    let detailsText = '';
+
+    let plotSizes = [];
+
+    plotElements.forEach((plot, i) => {
+      const inputs = plot.querySelectorAll('input');
+      if (inputs.length === 4) {
+        const values = Array.from(inputs).map(input => {
+          if (!input.checkValidity()) {
+            allValid = false;
+          }
+          return parseFloat(input.value) || 0;
+        });
+
+        if (allValid) {
+          const north = values[0];
+          const south = values[1];
+          const east = values[2];
+          const west = values[3];
+          const length = north + south;
+          const width = east + west;
+          const avgLength = length / 2;
+          const avgWidth = width / 2;
+          const q = avgLength * avgWidth;
+          const p = q / 435.6;
+          total += p;
+
+          detailsText += `প্লট ${i + 1}:\n`;
+          detailsText += `  দৈর্ঘ্য (উত্তর): ${north}\n`;
+          detailsText += `  দৈর্ঘ্য (দক্ষিণ): ${south}\n`;
+          detailsText += `  প্রস্থ (পূর্ব): ${east}\n`;
+          detailsText += `  প্রস্থ (পশ্চিম): ${west}\n`;
+          detailsText += `  গড় দৈর্ঘ্য: (${north} + ${south}) / 2 = ${avgLength.toFixed(3)}\n`;
+          detailsText += `  গড় প্রস্থ: (${east} + ${west}) / 2 = ${avgWidth.toFixed(3)}\n`;
+          detailsText += `  ক্ষেত্রফল (গড় দৈর্ঘ্য * গড় প্রস্থ): ${avgLength.toFixed(3)} * ${avgWidth.toFixed(3)} = ${q.toFixed(3)}\n`;
+          detailsText += `  একরে ক্ষেত্রফল (ক্ষেত্রফল / 435.6): ${q.toFixed(3)} / 435.6 = ${p.toFixed(3)}\n\n`;
+
+          plotSizes.push({
+            length: avgLength,
+            width: avgWidth,
+            north,
+            south,
+            east,
+            west
+          });
+        }
+      }
+    });
+
+    output.textContent = allValid ? total.toFixed(2) : '0';
+    calcDetails.textContent = detailsText;
+
+    if (allValid && canvasVisible) {
+      drawPlots(plotSizes);
+    } else {
+      clearCanvas();
+    }
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+function drawPlots(plotSizes) {
+  clearCanvas();
+
+  if (plotSizes.length === 0) return;
+
+  const paddingLeft = 100;
+  const paddingTop = 70;
+
+  const gap = 0;  // এখন কোনো ফাঁকা নেই
+
+  // স্কেল ১০ গুণ
+  plotSizes = plotSizes.map(p => ({
+    ...p,
+    length: p.length * 5,
+    width: p.width * 5
+  }));
+
+  const totalHeightNeeded = plotSizes.reduce((sum, p) => sum + p.width, 0) + gap * (plotSizes.length - 1);
+  const maxLength = Math.max(...plotSizes.map(p => p.length));
+
+  // বড় ক্যানভাস (ডায়নামিক করে নেওয়া হচ্ছে)
+  canvas.width = Math.max(800, maxLength + paddingLeft * 2);
+  canvas.height = Math.max(800, totalHeightNeeded + paddingTop * 2);
+
+  const maxCanvasWidth = canvas.width - paddingLeft * 2;
+  const maxCanvasHeight = canvas.height - paddingTop * 2;
+
+  let scaleY = totalHeightNeeded > maxCanvasHeight ? maxCanvasHeight / totalHeightNeeded : 1;
+  let scaleX = maxLength > maxCanvasWidth ? maxCanvasWidth / maxLength : 1;
+  let scale = Math.min(scaleX, scaleY);
+
+  let y = paddingTop;
+  ctx.font = "13px monospace";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  plotSizes.forEach((plot, i) => {
+    let plotLengthScaled = plot.length * scale;
+    let plotWidthScaled = plot.width * scale;
+
+    // এলাকা
+    
+    const area = (plot.length * plot.width) / 435.6;
+
+    // প্লট আঁকা
+    ctx.strokeStyle = "#1976d2";
+    ctx.lineWidth = 3;
+    ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
+    ctx.fillRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
+    ctx.strokeRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
+
+    // ভিতরের টেক্সট
+    ctx.fillStyle = "#000";
+
+    // প্লট নাম ও এলাকা
+    ctx.fillText(`প্লট ${i + 1}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2 - 24);
+
+    // দিকের লেবেল ও মান ভিতরে বসানো
+    ctx.fillStyle = "#1976d2";
+    ctx.font = "12px monospace";
+
+    ctx.fillText(`উঃ ${plot.north.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + 16);
+    ctx.fillText(`দঃ ${plot.south.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled - 16);
+    ctx.fillText(`পঃ ${plot.west.toFixed(2)}`, paddingLeft + 45, y + plotWidthScaled / 2);
+    ctx.fillText(`পূঃ ${plot.east.toFixed(2)}`, paddingLeft + plotLengthScaled - 45, y + plotWidthScaled / 2);
+
+    y += plotWidthScaled + gap;
+  });
+}
+  function toggleCalculations() {
+    calculationsVisible = !calculationsVisible;
+    calcDetails.style.display = calculationsVisible ? 'block' : 'none';
+    toggleCalcBtn.textContent = calculationsVisible ? 'হিসাব লুকান' : 'হিসাব দেখান';
+  }
+
+  function toggleCanvas() {
+    canvasVisible = !canvasVisible;
+    canvasContainer.style.display = canvasVisible ? 'block' : 'none';
+    toggleCanvasBtn.textContent = canvasVisible ? 'জমির দৃশ্য লুকান' : 'জমির দৃশ্য দেখান';
+    if (canvasVisible) {
+      calculateTotal();
+    }
+  }
+  
+  function downloadCalculations() {
+  const text = calcDetails.textContent;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = 'জমির_হিসাব.txt';
+  link.href = URL.createObjectURL(blob);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function downloadCanvasImage() {
+  const image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+  const link = document.createElement('a');
+  link.download = 'জমির_দৃশ্য.png';
+  link.href = image;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function printCanvas() {
+  if (!canvas) {
+    alert("ক্যানভাস পাওয়া যায়নি!");
+    return;
+  }
+  const dataUrl = canvas.toDataURL("image/png");
+  const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+  const htmlContent = `
+    <html>
+    <head>
+      <title>জমির দৃশ্য প্রিন্ট</title>
+      <style>
+        body { margin: 0; padding: 20px; text-align: center; }
+        img { max-width: 100%; border: 1px solid #ccc; }
+      </style>
+    </head>
+    <body>
+      <h3>জমির দৃশ্য</h3>
+      <img src="${dataUrl}" />
+      <script>
+        window.onload = function() {
+          window.focus();
+          window.print();
+        }
+      <\/script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+}
+
+  
+  
+
+  // প্রথমে লোড হলে লোকালস্টোরেজ থেকে ডেটা লোড করবো
+  loadFromLocalStorage();
+
+</script>
+
+</body>
+</html>
