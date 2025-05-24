@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Land Plot Calculator (Real-Time)</title>
+  <title>Land Measurement Calculator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 30px 40px;
       max-width: 650px;
       background: #fafafa;
+      direction: ltr;
     }
     .plot {
       margin-bottom: 20px;
@@ -69,7 +70,6 @@
       color: white;
       font-weight: 700;
       box-shadow: 0 2px 8px rgba(25, 118, 210, 0.6);
-      transition: background-color 0.3s ease;
     }
     #addPlotBtn:hover {
       background-color: #0f4a8c;
@@ -88,10 +88,10 @@
       background: #fff;
       display: none;
       white-space: pre-wrap;
-      font-family: monospace;
+      font-family: monospace, Arial, sans-serif;
       font-size: 0.95rem;
       color: #333;
-      box-shadow: 1px 2px 10px rgba(0,0,0,0.05);
+      direction: ltr;
     }
     button.toggleBtn {
       margin-top: 20px;
@@ -121,13 +121,13 @@
 </head>
 <body>
 
-<h2>Land Area Calculator (Real-Time)</h2>
+<h2>Land Measurement Calculator</h2>
 
 <div id="plots"></div>
 
-<button id="addPlotBtn" onclick="addPlot()">Add Plot</button>
+<button id="addPlotBtn" onclick="addPlot()">Add New Plot</button>
 
-<div id="output">Total Area: <span id="demo">0</span> acres</div>
+<div id="output">Total Area: <span id="demo">0</span> decimals</div>
 
 <div>
   <button id="toggleCalcBtn" class="toggleBtn" onclick="toggleCalculations()">Show Calculations</button>
@@ -138,6 +138,11 @@
 
 <div id="canvasContainer">
   <canvas id="landCanvas" width="600" height="400"></canvas>
+</div>
+<div>
+  <button class="toggleBtn" onclick="downloadCalculations()">Download Calculations</button>
+  <button class="toggleBtn" onclick="downloadCanvasImage()">Download Land Image</button>
+  <button class="toggleBtn" onclick="printCanvas()">Print Land Image</button>
 </div>
 
 <script>
@@ -213,7 +218,6 @@
     let total = 0;
     let allValid = true;
     let detailsText = '';
-
     let plotSizes = [];
 
     plotElements.forEach((plot, i) => {
@@ -235,9 +239,9 @@
           const width = east + west;
           const avgLength = length / 2;
           const avgWidth = width / 2;
-          const q = avgLength * avgWidth;
-          const p = q / 435.6;
-          total += p;
+          const areaSqFt = avgLength * avgWidth;
+          const areaDecimal = areaSqFt / 435.6;
+          total += areaDecimal;
 
           detailsText += `Plot ${i + 1}:\n`;
           detailsText += `  Length (North): ${north}\n`;
@@ -246,8 +250,8 @@
           detailsText += `  Width (West): ${west}\n`;
           detailsText += `  Average Length: (${north} + ${south}) / 2 = ${avgLength.toFixed(3)}\n`;
           detailsText += `  Average Width: (${east} + ${west}) / 2 = ${avgWidth.toFixed(3)}\n`;
-          detailsText += `  Area (avgLength * avgWidth): ${avgLength.toFixed(3)} * ${avgWidth.toFixed(3)} = ${q.toFixed(3)}\n`;
-          detailsText += `  Area in acres (Area / 435.6): ${q.toFixed(3)} / 435.6 = ${p.toFixed(3)}\n\n`;
+          detailsText += `  Area (Avg Length * Avg Width): ${avgLength.toFixed(3)} * ${avgWidth.toFixed(3)} = ${areaSqFt.toFixed(3)} sq.ft\n`;
+          detailsText += `  Area in decimals (area / 435.6): ${areaSqFt.toFixed(3)} / 435.6 = ${areaDecimal.toFixed(3)}\n\n`;
 
           plotSizes.push({
             length: avgLength,
@@ -280,73 +284,55 @@
 
     if (plotSizes.length === 0) return;
 
-    const paddingLeft = 100;   // more space for numbers
+    const paddingLeft = 100;
     const paddingTop = 70;
-    const paddingRight = 70;
-    const paddingBottom = 70;
-    const gap = 50;
+    const gap = 0;
 
-    const maxCanvasWidth = canvas.width - paddingLeft - paddingRight;
-    const maxCanvasHeight = canvas.height - paddingTop - paddingBottom;
+    plotSizes = plotSizes.map(p => ({
+      ...p,
+      length: p.length * 5,
+      width: p.width * 5
+    }));
 
     const totalHeightNeeded = plotSizes.reduce((sum, p) => sum + p.width, 0) + gap * (plotSizes.length - 1);
-    let maxLength = Math.max(...plotSizes.map(p => p.length));
+    const maxLength = Math.max(...plotSizes.map(p => p.length));
+
+    canvas.width = Math.max(800, maxLength + paddingLeft * 2);
+    canvas.height = Math.max(800, totalHeightNeeded + paddingTop * 2);
+
+    const maxCanvasWidth = canvas.width - paddingLeft * 2;
+    const maxCanvasHeight = canvas.height - paddingTop * 2;
 
     let scaleY = totalHeightNeeded > maxCanvasHeight ? maxCanvasHeight / totalHeightNeeded : 1;
     let scaleX = maxLength > maxCanvasWidth ? maxCanvasWidth / maxLength : 1;
     let scale = Math.min(scaleX, scaleY);
 
     let y = paddingTop;
-    ctx.font = "14px monospace";
+    ctx.font = "13px monospace";
     ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
 
     plotSizes.forEach((plot, i) => {
-      const plotLengthScaled = plot.length * scale;
-      const plotWidthScaled = plot.width * scale;
+      let plotLengthScaled = plot.length * scale;
+      let plotWidthScaled = plot.width * scale;
+      const area = (plot.length * plot.width) / 435.6;
 
-      // Draw rectangle
       ctx.strokeStyle = "#1976d2";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
-
-      // Fill lightly
+      ctx.lineWidth = 3;
       ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
       ctx.fillRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
+      ctx.strokeRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
 
-      // Plot number - centered inside
       ctx.fillStyle = "#000";
-      ctx.textAlign = "center";
-      ctx.fillText(`Plot ${i + 1}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2);
+      ctx.fillText(`Plot ${i + 1}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2 - 24);
 
       ctx.fillStyle = "#1976d2";
       ctx.font = "12px monospace";
 
-      // North label and value - centered above rectangle
-      ctx.textAlign = "center";
-      ctx.fillText("North", paddingLeft + plotLengthScaled / 2, y - 30);
-      ctx.fillText(plot.north.toFixed(2), paddingLeft + plotLengthScaled / 2, y - 15);
-
-      // South label and value - centered below rectangle
-      ctx.fillText("South", paddingLeft + plotLengthScaled / 2, y + plotWidthScaled + 30);
-      ctx.fillText(plot.south.toFixed(2), paddingLeft + plotLengthScaled / 2, y + plotWidthScaled + 45);
-
-      // East label and value - right middle (rotated)
-      ctx.save();
-      ctx.translate(paddingLeft + plotLengthScaled + 30, y + plotWidthScaled / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "center";
-      ctx.fillText("East", 0, -10);
-      ctx.fillText(plot.east.toFixed(2), 0, 10);
-      ctx.restore();
-
-      // West label and value - left middle (rotated)
-      ctx.save();
-      ctx.translate(paddingLeft - 30, y + plotWidthScaled / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "center";
-      ctx.fillText("West", 0, -10);
-      ctx.fillText(plot.west.toFixed(2), 0, 10);
-      ctx.restore();
+      ctx.fillText(`N: ${plot.north.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + 16);
+      ctx.fillText(`S: ${plot.south.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled - 16);
+      ctx.fillText(`W: ${plot.west.toFixed(2)}`, paddingLeft + 45, y + plotWidthScaled / 2);
+      ctx.fillText(`E: ${plot.east.toFixed(2)}`, paddingLeft + plotLengthScaled - 45, y + plotWidthScaled / 2);
 
       y += plotWidthScaled + gap;
     });
@@ -362,14 +348,67 @@
     canvasVisible = !canvasVisible;
     canvasContainer.style.display = canvasVisible ? 'block' : 'none';
     toggleCanvasBtn.textContent = canvasVisible ? 'Hide Land View' : 'Show Land View';
-
-    // Redraw if showing
     if (canvasVisible) {
       calculateTotal();
     }
   }
 
-  // Load saved plots or start with one
+  function downloadCalculations() {
+    const text = calcDetails.textContent;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.download = 'land_calculations.txt';
+    link.href = URL.createObjectURL(blob);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function downloadCanvasImage() {
+    const image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    const link = document.createElement('a');
+    link.download = 'land_view.png';
+    link.href = image;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function printCanvas() {
+    if (!canvas) {
+      alert("Canvas not found!");
+      return;
+    }
+    const dataUrl = canvas.toDataURL("image/png");
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+    const htmlContent = `
+      <html>
+      <head>
+        <title>Print Land View</title>
+        <style>
+          body { margin: 0; padding: 20px; text-align: center; }
+          img { max-width: 100%; border: 1px solid #ccc; }
+        </style>
+      </head>
+      <body>
+        <h3>Land View</h3>
+        <img src="${dataUrl}" />
+        <script>
+          window.onload = function() {
+            window.focus();
+            window.print();
+          }
+        <\/script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  }
+
   loadFromLocalStorage();
 </script>
 
