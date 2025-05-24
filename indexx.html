@@ -371,7 +371,7 @@ function drawPlots(plotSizes) {
 }
 
 function drawPlot(x, y, plot, index) {
-  const area = (plot.length * plot.width) / 435.6;
+  const area = (plot.length/5 * plot.width/5) / 435.6;
 
   ctx.strokeStyle = "#1976d2";
   ctx.lineWidth = 3;
@@ -385,6 +385,7 @@ function drawPlot(x, y, plot, index) {
   ctx.textAlign = "center";
 
   ctx.fillText(`Plot ${index + 1}`, x + plot.length / 2, y + plot.width / 2 - 24);
+  ctx.fillText(`${area.toFixed(2)} Decimal`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2 - 8);
 
   ctx.fillStyle = "#1976d2";
   ctx.font = "12px monospace";
