@@ -239,10 +239,9 @@
           const width = east + west;
           const avgLength = length / 2;
           const avgWidth = width / 2;
-          const areaSqFt = avgLength * avgWidth;
-          const areaDecimal = areaSqFt / 435.6;
-          total += areaDecimal;
-
+          const q = avgLength * avgWidth;
+          const p = q / 435.6;
+          total += p;
           
           detailsText += `প্লট ${i + 1}:\n`;
           detailsText += `  দৈর্ঘ্য (উত্তর): ${north}\n`;
