@@ -315,7 +315,7 @@
     plotSizes.forEach((plot, i) => {
       let plotLengthScaled = plot.length * scale;
       let plotWidthScaled = plot.width * scale;
-      const area = (plot.length * plot.width) / 435.6;
+      const area = (plot.length/5 * plot.width/5) / 435.6;
 
       ctx.strokeStyle = "#1976d2";
       ctx.lineWidth = 3;
