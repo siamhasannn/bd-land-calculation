@@ -117,11 +117,40 @@
       border: 1.5px solid #999;
       border-radius: 8px;
     }
+    
+    .styledSelect {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1.5px solid #bbb;
+  background-color: #fff;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: border-color 0.3s ease;
+  font-family: 'SolaimanLipi', Arial, sans-serif;
+}
+.styledSelect:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 6px rgba(25, 118, 210, 0.4);
+}
+
   </style>
 </head>
 <body>
 
 <h2>Land Measurement Calculator</h2>
+<div style="margin-bottom: 20px;">
+  <label for="plotSide" style="font-weight: bold; margin-right: 10px;">Add Plot Direction:</label>
+  <select id="plotSide" class="styledSelect">
+    <option value="south">South </option>
+    <option value="north">North</option>
+    <option value="east">East</option>
+    <option value="west">West</option>
+  </select>
+</div>
 
 <div id="plots"></div>
 
@@ -132,7 +161,6 @@
 <div>
   <button id="toggleCalcBtn" class="toggleBtn" onclick="toggleCalculations()">Show Calculations</button>
   <button id="toggleCanvasBtn" class="toggleBtn" onclick="toggleCanvas()">Show Land View</button>
-</div>
 
 <div id="calcDetails"></div>
 
@@ -278,65 +306,119 @@
   function clearCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
+function drawPlots(plotSizes) {
+  clearCanvas();
+  if (plotSizes.length === 0) return;
 
-  function drawPlots(plotSizes) {
-    clearCanvas();
+  const padding = 100;
+  const direction = document.getElementById('plotSide').value;
+  const gap = 0;
 
-    if (plotSizes.length === 0) return;
+  plotSizes = plotSizes.map(p => ({
+    ...p,
+    length: p.length * 5,
+    width: p.width * 5
+  }));
 
-    const paddingLeft = 100;
-    const paddingTop = 70;
-    const gap = 0;
-
-    plotSizes = plotSizes.map(p => ({
-      ...p,
-      length: p.length * 5,
-      width: p.width * 5
-    }));
-
-    const totalHeightNeeded = plotSizes.reduce((sum, p) => sum + p.width, 0) + gap * (plotSizes.length - 1);
-    const maxLength = Math.max(...plotSizes.map(p => p.length));
-
-    canvas.width = Math.max(800, maxLength + paddingLeft * 2);
-    canvas.height = Math.max(800, totalHeightNeeded + paddingTop * 2);
-
-    const maxCanvasWidth = canvas.width - paddingLeft * 2;
-    const maxCanvasHeight = canvas.height - paddingTop * 2;
-
-    let scaleY = totalHeightNeeded > maxCanvasHeight ? maxCanvasHeight / totalHeightNeeded : 1;
-    let scaleX = maxLength > maxCanvasWidth ? maxCanvasWidth / maxLength : 1;
-    let scale = Math.min(scaleX, scaleY);
-
-    let y = paddingTop;
-    ctx.font = "13px monospace";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-
-    plotSizes.forEach((plot, i) => {
-      let plotLengthScaled = plot.length * scale;
-      let plotWidthScaled = plot.width * scale;
-      const area = (plot.length * plot.width) / 435.6;
-
-      ctx.strokeStyle = "#1976d2";
-      ctx.lineWidth = 3;
-      ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
-      ctx.fillRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
-      ctx.strokeRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
-
-      ctx.fillStyle = "#000";
-      ctx.fillText(`Plot ${i + 1}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2 - 24);
-
-      ctx.fillStyle = "#1976d2";
-      ctx.font = "12px monospace";
-
-      ctx.fillText(`N: ${plot.north.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + 16);
-      ctx.fillText(`S: ${plot.south.toFixed(2)}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled - 16);
-      ctx.fillText(`W: ${plot.west.toFixed(2)}`, paddingLeft + 45, y + plotWidthScaled / 2);
-      ctx.fillText(`E: ${plot.east.toFixed(2)}`, paddingLeft + plotLengthScaled - 45, y + plotWidthScaled / 2);
-
-      y += plotWidthScaled + gap;
-    });
+  let canvasW = 800, canvasH = 800;
+  if (direction === 'north' || direction === 'south') {
+    const totalHeight = plotSizes.reduce((sum, p) => sum + p.width + gap, 0);
+    const maxWidth = Math.max(...plotSizes.map(p => p.length));
+    canvasW = Math.max(canvasW, maxWidth + padding * 2);
+    canvasH = Math.max(canvasH, totalHeight + padding * 2);
+  } else {
+    const totalWidth = plotSizes.reduce((sum, p) => sum + p.length + gap, 0);
+    const maxHeight = Math.max(...plotSizes.map(p => p.width));
+    canvasW = Math.max(canvasW, totalWidth + padding * 2);
+    canvasH = Math.max(canvasH, maxHeight + padding * 2);
   }
+
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+
+  let x = padding;
+  let y = padding;
+
+  if (direction === 'south') {
+    // Draw from top to bottom
+    plotSizes.forEach((plot, i) => {
+      drawPlot(padding, y, plot, i);
+      y += plot.width + gap;
+    });
+  } else if (direction === 'north') {
+    // Draw from bottom to top
+    y = canvas.height - padding;
+    for (let i = 0; i < plotSizes.length; i++) {
+      const plot = plotSizes[i];
+      y -= plot.width;
+      drawPlot(padding, y, plot, i);
+    }
+  } else if (direction === 'east') {
+    // Draw from left to right
+    plotSizes.forEach((plot, i) => {
+      drawPlot(x, padding, plot, i);
+      x += plot.length + gap;
+    });
+  } else if (direction === 'west') {
+    // Draw from right to left
+    x = canvas.width - padding;
+    for (let i = 0; i < plotSizes.length; i++) {
+      const plot = plotSizes[i];
+      x -= plot.length;
+      drawPlot(x, padding, plot, i);
+    }
+  }
+}
+
+function drawPlot(x, y, plot, index) {
+  const area = (plot.length * plot.width) / 435.6;
+
+  ctx.strokeStyle = "#1976d2";
+  ctx.lineWidth = 3;
+  ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
+  ctx.fillRect(x, y, plot.length, plot.width);
+  ctx.strokeRect(x, y, plot.length, plot.width);
+
+  ctx.fillStyle = "#000";
+  ctx.font = "13px monospace";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  ctx.fillText(`Plot ${index + 1}`, x + plot.length / 2, y + plot.width / 2 - 24);
+
+  ctx.fillStyle = "#1976d2";
+  ctx.font = "12px monospace";
+
+  ctx.fillText(`N: ${plot.north.toFixed(2)}`, x + plot.length / 2, y + 16);
+  ctx.fillText(`S: ${plot.south.toFixed(2)}`, x + plot.length / 2, y + plot.width - 16);
+  ctx.fillText(`W: ${plot.west.toFixed(2)}`, x + 45, y + plot.width / 2);
+  ctx.fillText(`E: ${plot.east.toFixed(2)}`, x + plot.length - 45, y + plot.width / 2);
+}
+
+function drawPlot(x, y, plot, index) {
+  const area = (plot.length * plot.width) / 435.6;
+
+  ctx.strokeStyle = "#1976d2";
+  ctx.lineWidth = 3;
+  ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
+  ctx.fillRect(x, y, plot.length, plot.width);
+  ctx.strokeRect(x, y, plot.length, plot.width);
+
+  ctx.fillStyle = "#000";
+  ctx.font = "13px monospace";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  ctx.fillText(`Plot ${index + 1}`, x + plot.length / 2, y + plot.width / 2 - 24);
+
+  ctx.fillStyle = "#1976d2";
+  ctx.font = "12px monospace";
+
+  ctx.fillText(`S: ${plot.south.toFixed(2)}`, x + plot.length / 2, y + 16);
+  ctx.fillText(`N: ${plot.north.toFixed(2)}`, x + plot.length / 2, y + plot.width - 16);
+  ctx.fillText(`E: ${plot.east.toFixed(2)}`, x + 45, y + plot.width / 2);
+  ctx.fillText(`W: ${plot.west.toFixed(2)}`, x + plot.length - 45, y + plot.width / 2);
+}
 
   function toggleCalculations() {
     calculationsVisible = !calculationsVisible;
