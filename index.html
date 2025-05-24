@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
-  <title>জমির ক্ষেত্রফল হিসাব (রিয়েল টাইম)</title>
+  <title>জমির পরিমাপ হিসাব</title>
   <style>
     body {
       font-family: 'SolaimanLipi', Arial, sans-serif;
@@ -128,13 +128,13 @@
 </head>
 <body>
 
-<h2>জমির ক্ষেত্রফল হিসাব (রিয়েল টাইম)</h2>
+<h2>জমির পরিমাপ হিসাব</h2>
 
 <div id="plots"></div>
 
 <button id="addPlotBtn" onclick="addPlot()">নতুন প্লট যোগ করুন</button>
 
-<div id="output">মোট এলাকা: <span id="demo">0</span> একর</div>
+<div id="output">মোট এলাকা: <span id="demo">0</span> শতাংশ</div>
 
 <div>
   <button id="toggleCalcBtn" class="toggleBtn" onclick="toggleCalculations()">হিসাব দেখান</button>
@@ -258,7 +258,7 @@
           detailsText += `  গড় দৈর্ঘ্য: (${north} + ${south}) / 2 = ${avgLength.toFixed(3)}\n`;
           detailsText += `  গড় প্রস্থ: (${east} + ${west}) / 2 = ${avgWidth.toFixed(3)}\n`;
           detailsText += `  ক্ষেত্রফল (গড় দৈর্ঘ্য * গড় প্রস্থ): ${avgLength.toFixed(3)} * ${avgWidth.toFixed(3)} = ${q.toFixed(3)}\n`;
-          detailsText += `  একরে ক্ষেত্রফল (ক্ষেত্রফল / 435.6): ${q.toFixed(3)} / 435.6 = ${p.toFixed(3)}\n\n`;
+          detailsText += `  শতাংশে ক্ষেত্রফল (ক্ষেত্রফল / 435.6): ${q.toFixed(3)} / 435.6 = ${p.toFixed(3)}\n\n`;
 
           plotSizes.push({
             length: avgLength,
