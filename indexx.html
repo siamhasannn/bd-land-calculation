@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Land Plot Calculator (Real-Time)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px 40px;
+      max-width: 650px;
+      background: #fafafa;
+    }
+    .plot {
+      margin-bottom: 20px;
+      padding: 15px 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      box-shadow: 1px 1px 6px rgba(0,0,0,0.05);
+    }
+    .inputs-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .inputs-row label {
+      width: 90px;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #444;
+    }
+    .inputs-row input {
+      width: 100px;
+      margin-right: 14px;
+      padding: 7px 10px;
+      font-size: 1.1rem;
+      border: 1.5px solid #bbb;
+      border-radius: 5px;
+      transition: border-color 0.25s ease;
+    }
+    .inputs-row input:focus {
+      border-color: #1976d2;
+      outline: none;
+      box-shadow: 0 0 6px rgba(25, 118, 210, 0.4);
+    }
+    .plot button {
+      margin-top: 8px;
+      padding: 7px 14px;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    .plot button:hover {
+      background-color: #d32f2f;
+    }
+    #addPlotBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 7px;
+      border: none;
+      background-color: #1976d2;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.6);
+      transition: background-color 0.3s ease;
+    }
+    #addPlotBtn:hover {
+      background-color: #0f4a8c;
+    }
+    #output {
+      margin-top: 30px;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: #1976d2;
+    }
+    #calcDetails, #canvasContainer {
+      margin-top: 20px;
+      border: 1.5px solid #ccc;
+      padding: 25px 30px 30px 30px;
+      border-radius: 10px;
+      background: #fff;
+      display: none;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 0.95rem;
+      color: #333;
+      box-shadow: 1px 2px 10px rgba(0,0,0,0.05);
+    }
+    button.toggleBtn {
+      margin-top: 20px;
+      margin-right: 15px;
+      cursor: pointer;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 7px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(25, 118, 210, 0.5);
+      transition: background-color 0.3s ease;
+    }
+    button.toggleBtn:hover {
+      background-color: #0f4a8c;
+    }
+    canvas {
+      background-color: white;
+      display: block;
+      margin: 0 auto;
+      border: 1.5px solid #999;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Land Area Calculator (Real-Time)</h2>
+
+<div id="plots"></div>
+
+<button id="addPlotBtn" onclick="addPlot()">Add Plot</button>
+
+<div id="output">Total Area: <span id="demo">0</span> acres</div>
+
+<div>
+  <button id="toggleCalcBtn" class="toggleBtn" onclick="toggleCalculations()">Show Calculations</button>
+  <button id="toggleCanvasBtn" class="toggleBtn" onclick="toggleCanvas()">Show Land View</button>
+</div>
+
+<div id="calcDetails"></div>
+
+<div id="canvasContainer">
+  <canvas id="landCanvas" width="600" height="400"></canvas>
+</div>
+
+<script>
+  const plotsContainer = document.getElementById('plots');
+  const output = document.getElementById('demo');
+  const calcDetails = document.getElementById('calcDetails');
+  const toggleCalcBtn = document.getElementById('toggleCalcBtn');
+  const toggleCanvasBtn = document.getElementById('toggleCanvasBtn');
+  const canvasContainer = document.getElementById('canvasContainer');
+  const canvas = document.getElementById('landCanvas');
+  const ctx = canvas.getContext('2d');
+  let calculationsVisible = false;
+  let canvasVisible = false;
+
+  function saveToLocalStorage() {
+    const plotElements = document.querySelectorAll('.plot');
+    const plotData = Array.from(plotElements).map(plot => {
+      return Array.from(plot.querySelectorAll('input')).map(input => input.value || '');
+    });
+    localStorage.setItem('plotData', JSON.stringify(plotData));
+  }
+
+  function loadFromLocalStorage() {
+    const data = JSON.parse(localStorage.getItem('plotData'));
+    if (data && data.length > 0) {
+      data.forEach(values => {
+        addPlot(values);
+      });
+    } else {
+      addPlot();
+    }
+    calculateTotal();
+  }
+
+  function addPlot(values = ['', '', '', '']) {
+    const plotDiv = document.createElement('div');
+    plotDiv.className = 'plot';
+
+    plotDiv.innerHTML = `
+      <div class="inputs-row">
+        <label>Length:</label>
+        <input type="number" step="any" placeholder="North" required value="${values[0]}">
+        <input type="number" step="any" placeholder="South" required value="${values[1]}">
+      </div>
+      <div class="inputs-row">
+        <label>Width:</label>
+        <input type="number" step="any" placeholder="East" required value="${values[2]}">
+        <input type="number" step="any" placeholder="West" required value="${values[3]}">
+      </div>
+      <button onclick="deletePlot(this)">Delete</button>
+    `;
+
+    Array.from(plotDiv.querySelectorAll('input')).forEach(input => {
+      input.addEventListener('input', () => {
+        saveToLocalStorage();
+        calculateTotal();
+      });
+    });
+
+    plotsContainer.appendChild(plotDiv);
+    saveToLocalStorage();
+  }
+
+  function deletePlot(button) {
+    const plotDiv = button.parentElement;
+    plotsContainer.removeChild(plotDiv);
+    saveToLocalStorage();
+    calculateTotal();
+  }
+
+  function calculateTotal() {
+    const plotElements = document.querySelectorAll('.plot');
+    let total = 0;
+    let allValid = true;
+    let detailsText = '';
+
+    let plotSizes = [];
+
+    plotElements.forEach((plot, i) => {
+      const inputs = plot.querySelectorAll('input');
+      if (inputs.length === 4) {
+        const values = Array.from(inputs).map(input => {
+          if (!input.checkValidity()) {
+            allValid = false;
+          }
+          return parseFloat(input.value) || 0;
+        });
+
+        if (allValid) {
+          const north = values[0];
+          const south = values[1];
+          const east = values[2];
+          const west = values[3];
+          const length = north + south;
+          const width = east + west;
+          const avgLength = length / 2;
+          const avgWidth = width / 2;
+          const q = avgLength * avgWidth;
+          const p = q / 435.6;
+          total += p;
+
+          detailsText += `Plot ${i + 1}:\n`;
+          detailsText += `  Length (North): ${north}\n`;
+          detailsText += `  Length (South): ${south}\n`;
+          detailsText += `  Width (East): ${east}\n`;
+          detailsText += `  Width (West): ${west}\n`;
+          detailsText += `  Average Length: (${north} + ${south}) / 2 = ${avgLength.toFixed(3)}\n`;
+          detailsText += `  Average Width: (${east} + ${west}) / 2 = ${avgWidth.toFixed(3)}\n`;
+          detailsText += `  Area (avgLength * avgWidth): ${avgLength.toFixed(3)} * ${avgWidth.toFixed(3)} = ${q.toFixed(3)}\n`;
+          detailsText += `  Area in acres (Area / 435.6): ${q.toFixed(3)} / 435.6 = ${p.toFixed(3)}\n\n`;
+
+          plotSizes.push({
+            length: avgLength,
+            width: avgWidth,
+            north,
+            south,
+            east,
+            west
+          });
+        }
+      }
+    });
+
+    output.textContent = allValid ? total.toFixed(2) : '0';
+    calcDetails.textContent = detailsText;
+
+    if (allValid && canvasVisible) {
+      drawPlots(plotSizes);
+    } else {
+      clearCanvas();
+    }
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function drawPlots(plotSizes) {
+    clearCanvas();
+
+    if (plotSizes.length === 0) return;
+
+    const paddingLeft = 100;   // more space for numbers
+    const paddingTop = 70;
+    const paddingRight = 70;
+    const paddingBottom = 70;
+    const gap = 50;
+
+    const maxCanvasWidth = canvas.width - paddingLeft - paddingRight;
+    const maxCanvasHeight = canvas.height - paddingTop - paddingBottom;
+
+    const totalHeightNeeded = plotSizes.reduce((sum, p) => sum + p.width, 0) + gap * (plotSizes.length - 1);
+    let maxLength = Math.max(...plotSizes.map(p => p.length));
+
+    let scaleY = totalHeightNeeded > maxCanvasHeight ? maxCanvasHeight / totalHeightNeeded : 1;
+    let scaleX = maxLength > maxCanvasWidth ? maxCanvasWidth / maxLength : 1;
+    let scale = Math.min(scaleX, scaleY);
+
+    let y = paddingTop;
+    ctx.font = "14px monospace";
+    ctx.textBaseline = "middle";
+
+    plotSizes.forEach((plot, i) => {
+      const plotLengthScaled = plot.length * scale;
+      const plotWidthScaled = plot.width * scale;
+
+      // Draw rectangle
+      ctx.strokeStyle = "#1976d2";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
+
+      // Fill lightly
+      ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
+      ctx.fillRect(paddingLeft, y, plotLengthScaled, plotWidthScaled);
+
+      // Plot number - centered inside
+      ctx.fillStyle = "#000";
+      ctx.textAlign = "center";
+      ctx.fillText(`Plot ${i + 1}`, paddingLeft + plotLengthScaled / 2, y + plotWidthScaled / 2);
+
+      ctx.fillStyle = "#1976d2";
+      ctx.font = "12px monospace";
+
+      // North label and value - centered above rectangle
+      ctx.textAlign = "center";
+      ctx.fillText("North", paddingLeft + plotLengthScaled / 2, y - 30);
+      ctx.fillText(plot.north.toFixed(2), paddingLeft + plotLengthScaled / 2, y - 15);
+
+      // South label and value - centered below rectangle
+      ctx.fillText("South", paddingLeft + plotLengthScaled / 2, y + plotWidthScaled + 30);
+      ctx.fillText(plot.south.toFixed(2), paddingLeft + plotLengthScaled / 2, y + plotWidthScaled + 45);
+
+      // East label and value - right middle (rotated)
+      ctx.save();
+      ctx.translate(paddingLeft + plotLengthScaled + 30, y + plotWidthScaled / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.fillText("East", 0, -10);
+      ctx.fillText(plot.east.toFixed(2), 0, 10);
+      ctx.restore();
+
+      // West label and value - left middle (rotated)
+      ctx.save();
+      ctx.translate(paddingLeft - 30, y + plotWidthScaled / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.fillText("West", 0, -10);
+      ctx.fillText(plot.west.toFixed(2), 0, 10);
+      ctx.restore();
+
+      y += plotWidthScaled + gap;
+    });
+  }
+
+  function toggleCalculations() {
+    calculationsVisible = !calculationsVisible;
+    calcDetails.style.display = calculationsVisible ? 'block' : 'none';
+    toggleCalcBtn.textContent = calculationsVisible ? 'Hide Calculations' : 'Show Calculations';
+  }
+
+  function toggleCanvas() {
+    canvasVisible = !canvasVisible;
+    canvasContainer.style.display = canvasVisible ? 'block' : 'none';
+    toggleCanvasBtn.textContent = canvasVisible ? 'Hide Land View' : 'Show Land View';
+
+    // Redraw if showing
+    if (canvasVisible) {
+      calculateTotal();
+    }
+  }
+
+  // Load saved plots or start with one
+  loadFromLocalStorage();
+</script>
+
+</body>
+</html>
